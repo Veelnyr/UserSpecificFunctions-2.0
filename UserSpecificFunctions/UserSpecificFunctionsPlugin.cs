@@ -2,65 +2,37 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Microsoft.Xna.Framework;
 using Newtonsoft.Json;
 using Terraria;
-using Terraria.GameContent.NetModules;
-using Terraria.Localization;
-using Terraria.Net;
 using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.Hooks;
 using UserSpecificFunctions.Database;
 using UserSpecificFunctions.Extensions;
 using UserSpecificFunctions.Permissions;
-using System.Text.RegularExpressions; //byDD
 
 namespace UserSpecificFunctions
 {
-    /// <summary>
-    /// Represents the User Specific Functions plugin.
-    /// </summary>
     [ApiVersion(2, 1)]
     public sealed class UserSpecificFunctionsPlugin : TerrariaPlugin
     {
-        private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "userspecificfunctions.json");
-
+        private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "UserSpecificFunctions.json");
         private UserSpecificFunctionsConfig _config;
         private DatabaseManager _database;
+        private static Regex tagPattern = new Regex("(?<!\\\\)\\[(?<tag>[ac]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
 
-        /// <summary>
-        /// Gets the author.
-        /// </summary>
-        public override string Author => "Professor X";
+        private DateTime[] Times = new DateTime[256];
+        private double[] Spams = new double[256];
+        private string[] LastMsg = new string[256];
 
-        /// <summary>
-        /// Gets the description.
-        /// </summary>
+        public override string Author => "Ivan & Zaicon & Veelnyr";
         public override string Description => "N/A";
-
-        /// <summary>
-        /// Gets the name.
-        /// </summary>
         public override string Name => "User Specific Functions";
-
-        /// <summary>
-        /// Gets the version.
-        /// </summary>
         public override Version Version => Assembly.GetExecutingAssembly().GetName().Version;
+        public UserSpecificFunctionsPlugin(Main game) : base(game) { }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UserSpecificFunctionsPlugin"/> class.
-        /// </summary>
-        /// <param name="game">The <see cref="Main"/> instance.</param>
-        public UserSpecificFunctionsPlugin(Main game) : base(game)
-        {
-        }
-
-        /// <summary>
-        /// Releases unmanaged and - optionally - managed resources.
-        /// </summary>
-        /// <param name="disposing"><c>true</c> to release both managed and unmanaged resources; <c>false</c> to release only unmanaged resources.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -72,17 +44,16 @@ namespace UserSpecificFunctions
                 GeneralHooks.ReloadEvent -= OnReload;
                 PlayerHooks.PlayerPermission -= OnPlayerPermission;
                 ServerApi.Hooks.ServerChat.Deregister(this, OnServerChat);
+                ServerApi.Hooks.ServerLeave.Deregister(this, OnLeave);
+                PlayerHooks.PlayerCommand -= OnPlayerCommand;
 
-                Commands.ChatCommands.RemoveAll(c => c.CommandDelegate == UsCommandHandler);
-                Commands.ChatCommands.RemoveAll(c => c.CommandDelegate == UsPermissionCommandHandler);
+                Commands.ChatCommands.RemoveAll(c => c.CommandDelegate == UsCommand);
+                Commands.ChatCommands.RemoveAll(c => c.CommandDelegate == PermissionCommand);
             }
 
             base.Dispose(disposing);
         }
 
-        /// <summary>
-        /// Initializes the plugin.
-        /// </summary>
         public override void Initialize()
         {
             _config = UserSpecificFunctionsConfig.ReadOrCreate(ConfigPath);
@@ -93,11 +64,20 @@ namespace UserSpecificFunctions
             GeneralHooks.ReloadEvent += OnReload;
             PlayerHooks.PlayerPermission += OnPlayerPermission;
             ServerApi.Hooks.ServerChat.Register(this, OnServerChat);
- //           ServerApi.Hooks.WireTriggerAnnouncementBox.Register(this, OnWireTriggerAnnouncementBox);
- //           ServerApi.Hooks.NetGetData.Register(this, OnNetGetData);
+            ServerApi.Hooks.ServerLeave.Register(this, OnLeave);
+            PlayerHooks.PlayerCommand += OnPlayerCommand;
 
-            Commands.ChatCommands.Add(new Command(UsCommandHandler, "us"));
-            Commands.ChatCommands.Add(new Command(UsPermissionCommandHandler, "permission"));
+            Commands.ChatCommands.Add(new Command("us.cmd", UsCommand, "us"));
+            Commands.ChatCommands.Add(new Command("permission.cmd", PermissionCommand, "permission"));
+
+            Action<Command> Add = c =>
+            {
+                Commands.ChatCommands.RemoveAll(c2 => c2.Names.Exists(s2 => c.Names.Contains(s2)));
+                Commands.ChatCommands.Add(c);
+            };
+            Add(new Command(TShockAPI.Permissions.cantalkinthird, ThirdPerson, "me"));
+            Add(new Command(TShockAPI.Permissions.whisper, Reply, "reply", "r"));
+            Add(new Command(TShockAPI.Permissions.whisper, Whisper, "whisper", "w", "tell"));
         }
 
         private void OnAccountDelete(AccountDeleteEventArgs e)
@@ -120,7 +100,7 @@ namespace UserSpecificFunctions
                 return;
             }
 
-            if (playerInfo.Permissions.ContainsPermission(e.Permission))
+            if (playerInfo.Permissions.Contains(e.Permission))
             {
                 e.Result = !playerInfo.Permissions.Negated(e.Permission)
                     ? PermissionHookResult.Granted
@@ -138,44 +118,60 @@ namespace UserSpecificFunctions
             _database.Load();
         }
 
-        private void OnNetGetData(GetDataEventArgs e)
+        private void OnLeave(LeaveEventArgs e)
         {
-            if (e.MsgID == PacketTypes.HitSwitch)
-            {
-                return;
-            }
+            Spams[e.Who] = 0.0;
+            Times[e.Who] = DateTime.Now.AddSeconds(-_config.Time);
+            LastMsg[e.Who] = "";
         }
-
-        private void OnWireTriggerAnnouncementBox(TriggerAnnouncementBoxEventArgs e)
-        {
-            if (TShock.Players[e.Who] == null)
-            {
-                TSPlayer.All.SendMessage(">ТЗ-Патрик: " + e.Text, Color.LimeGreen);
-            }
-            else
-            {
-                var player = TShock.Players[e.Who];
-
-                var message = string.Format(TShock.Config.ChatFormat, player.Group.Name, ">", player.Name, "", e.Text);
-                TSPlayer.All.SendMessage(message, Color.Red);
-                TSPlayer.Server.SendMessage(message, Color.Red);
-            }
-            TShock.Log.Info($"byDii: {e.Text}");
-            e.Handled = true;
-        }
-
 
         private void OnServerChat(ServerChatEventArgs e)
         {
-            if (e.Handled)
+            if (e.Handled || e.Text.StartsWith(TShock.Config.CommandSpecifier) || e.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
+            {
+                return;
+            }
+            var player = TShock.Players[e.Who];
+            if (player == null)
             {
                 return;
             }
 
-            var player = TShock.Players[e.Who];
-            if (player == null || !player.IsLoggedIn)
+            string text = e.Text;
+
+            //anti spam
+            if (!player.HasPermission("antispam.ignore"))
             {
-                return;
+                if ((DateTime.Now - Times[e.Who]).TotalSeconds > _config.Time)
+                {
+                    Spams[e.Who] = 0.0;
+                    Times[e.Who] = DateTime.Now;
+                }
+
+                if (text == LastMsg[e.Who])
+                {
+                    Spams[e.Who] += _config.RepeatMsgWeight;
+                }
+                else
+                {
+                    LastMsg[e.Who] = text;
+                }
+
+                if ((double)text.Count(Char.IsUpper) / text.Length >= _config.CapsRatio)
+                {
+                    Spams[e.Who] += _config.CapsWeight;
+                    text = text.ToLower();
+                }
+                else if (text.Trim().Length <= _config.ShortLength)
+                    Spams[e.Who] += _config.ShortWeight;
+                else
+                    Spams[e.Who] += _config.NormalWeight;
+
+                if (SpamCheck(e.Who))
+                {
+                    e.Handled = true;
+                    return;
+                }
             }
 
             if (!player.HasPermission(TShockAPI.Permissions.canchat) || player.mute)
@@ -183,79 +179,125 @@ namespace UserSpecificFunctions
                 return;
             }
 
-            if (e.Text.StartsWith(TShock.Config.CommandSpecifier) ||
-                e.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
+            //tag filter, send message
+            if (player.IsLoggedIn)
             {
-                return;
-            }
+                var playerData = _database.Get(player.Account);
 
-            var playerData = _database.Get(player.Account);
-            if (playerData == null)
-            {
-                return;
-            }
+                var prefix = playerData.ChatData.Prefix ?? player.Group.Prefix;
+                var suffix = playerData.ChatData.Suffix ?? player.Group.Suffix;
+                var chatColor = playerData.ChatData.Color?.ParseColor() ?? player.Group.ChatColor.ParseColor();
 
-            var prefix = playerData.ChatData.Prefix ?? player.Group.Prefix;
-            var suffix = playerData.ChatData.Suffix ?? player.Group.Suffix;
-            var chatColor = playerData.ChatData.Color?.ParseColor() ?? player.Group.ChatColor.ParseColor();
+                var message = string.Format(TShock.Config.ChatFormat, player.Group.Name, prefix, player.Name, suffix, player.HasPermission("antispam.ignore") ? text : RemoveTags(text));
 
-            if (!TShock.Config.EnableChatAboveHeads)
-            {
-				// byDD
-	            String text = e.Text;
-	            string pattern = "\\bтз\\b";
-	            text = Regex.Replace(text, pattern, "ТБ", RegexOptions.IgnoreCase);
-	            //Terraria.Chat.ChatMessage.
-
-				var message = string.Format(TShock.Config.ChatFormat, player.Group.Name, prefix, player.Name, suffix,
-                    text); //byDD
                 TSPlayer.All.SendMessage(message, chatColor);
                 TSPlayer.Server.SendMessage(message, chatColor);
                 TShock.Log.Info($"Broadcast: {message}");
             }
             else
             {
-                var playerName = player.TPlayer.name;
-                player.TPlayer.name = string.Format(TShock.Config.ChatAboveHeadsFormat, player.Group.Name, prefix,
-                    player.Name,
-                    suffix);
-                NetMessage.SendData((int) PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(player.TPlayer.name),
-                    e.Who);
-
-                player.TPlayer.name = playerName;
-
-                var packet =
-                    NetTextModule.SerializeServerMessage(NetworkText.FromLiteral(e.Text), chatColor, (byte) e.Who);
-                NetManager.Instance.Broadcast(packet, e.Who);
-
-                NetMessage.SendData((int) PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(playerName), e.Who);
-
-                var msg =
-                    $"<{string.Format(TShock.Config.ChatAboveHeadsFormat, player.Group.Name, prefix, player.Name, suffix)}> {e.Text}";
-
-                player.SendMessage(msg, chatColor);
-                TSPlayer.Server.SendMessage(msg, chatColor);
-                TShock.Log.Info($"Broadcast: {msg}");
+                Color chatColor = player.Group.ChatColor.ParseColor();
+                var message = string.Format(TShock.Config.ChatFormat, player.Group.Name, player.Group.Prefix, player.Name, player.Group.Suffix, player.HasPermission("antispam.ignore") ? text : RemoveTags(text));
+                TSPlayer.All.SendMessage(message, chatColor);
+                TSPlayer.Server.SendMessage(message, chatColor);
+                TShock.Log.Info($"Broadcast: {message}");
             }
-
             e.Handled = true;
         }
 
-        private void UsCommandHandler(CommandArgs e)
+        void OnPlayerCommand(PlayerCommandEventArgs e)
+        {
+            if (!e.Handled && e.Player.RealPlayer && !e.Player.HasPermission("antispam.ignore"))
+            {
+                var plr = e.Player;
+                if ((DateTime.Now - Times[plr.Index]).TotalSeconds > _config.Time)
+                {
+                    Spams[plr.Index] = 0.0;
+                    Times[plr.Index] = DateTime.Now;
+                }
+
+                switch (e.CommandName)
+                {
+                    case "me":
+                    case "r":
+                    case "reply":
+                    case "tell":
+                    case "w":
+                    case "whisper":
+                        string text = e.CommandText.Substring(e.CommandName.Length);
+                        if (text == LastMsg[plr.Index])
+                        {
+                            Spams[plr.Index] += _config.RepeatMsgWeight;
+                        }
+                        else
+                        {
+                            LastMsg[plr.Index] = text;
+                        }
+
+                        if ((double)text.Count(Char.IsUpper) / text.Length >= _config.CapsRatio)
+                        {
+                            Spams[plr.Index] += _config.CapsWeight;
+                            text = text.ToLower();
+                        }
+                        else if (text.Trim().Length <= _config.ShortLength)
+                            Spams[plr.Index] += _config.ShortWeight;
+                        else
+                            Spams[plr.Index] += _config.NormalWeight;
+                        break;
+
+                    default:
+                        Spams[plr.Index] += _config.CommandWeight;
+                        break;
+                }
+
+                if (SpamCheck(plr.Index))
+                {
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private bool SpamCheck(int id)
+        {
+            if (Spams[id] > _config.KickThreshold)
+            {
+                TShock.Players[id].Kick(_config.SpamKickReason, true);
+                return true;
+            }
+            else if (Spams[id] > _config.Threshold)
+            {
+                Times[id] = DateTime.Now;
+                TShock.Players[id].SendErrorMessage(_config.SpamWarningMsg);
+                return true;
+            }
+            return false;
+        }
+
+        private string RemoveTags(string message)
+        {
+            while (true)
+            {
+                Match tag = tagPattern.Match(message);
+                if (!tag.Success)
+                {
+                    break;
+                }
+                message = message.Remove(tag.Index, tag.Length).Insert(tag.Index, tag.Groups["text"].Value);
+            }
+            return message;
+        }
+
+        private void UsCommand(CommandArgs e)
         {
             var player = e.Player;
-
-            // byDD
-            if (!player.HasPermission("us.color"))
+            if (e.Parameters.Count == 0)
             {
-                player.SendErrorMessage("You do not have permission to use this command.");
-                return;
-            }
-            // byDD
-
-            if (e.Parameters.Count < 1)
-            {
-                player.SendErrorMessage($"Invalid syntax! Use {Commands.Specifier}us help for help.");
+                player.SendInfoMessage("Available commands:");
+                player.SendInfoMessage($"{Commands.Specifier}us prefix <player name> <prefix>");
+                player.SendInfoMessage($"{Commands.Specifier}us suffix <player name> <suffix>");
+                player.SendInfoMessage($"{Commands.Specifier}us color <player name> <color>");
+                player.SendInfoMessage($"{Commands.Specifier}us read <player name>");
+                player.SendInfoMessage($"{Commands.Specifier}us remove <player name> <prefix/suffix/color/all>");
                 return;
             }
 
@@ -264,8 +306,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}us color <player name> <rrr,ggg,bbb>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us color <player name> <rrr,ggg,bbb>");
                     return;
                 }
 
@@ -293,7 +334,7 @@ namespace UserSpecificFunctions
 
                 if (target == null)
                 {
-                    target = new PlayerInfo(user.ID, new ChatData(e.Parameters[2]), new PermissionCollection());
+                    target = new PlayerMetadata(user.ID, new ChatInformation(color: e.Parameters[2]), new PermissionCollection());
                     _database.Add(target);
                 }
                 else
@@ -308,8 +349,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}us prefix <player name> <prefix>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us prefix <player name> <prefix>");
                     return;
                 }
 
@@ -330,22 +370,14 @@ namespace UserSpecificFunctions
                 var prefix = string.Join(" ", e.Parameters);
                 if (prefix.Length > _config.MaximumPrefixLength)
                 {
-                    player.SendErrorMessage(
-                        $"The prefix cannot contain more than {_config.MaximumPrefixLength} characters.");
-                    return;
-                }
-
-                if (_config.ProhibitedWords.Any(prefix.Contains))
-                {
-                    player.SendErrorMessage(
-                        $"The prefix cannot contain the following words: {string.Join(", ", from w in _config.ProhibitedWords where prefix.Contains(w) select w)}");
+                    player.SendErrorMessage($"The prefix cannot contain more than {_config.MaximumPrefixLength} characters.");
                     return;
                 }
 
                 var target = _database.Get(user);
                 if (target == null)
                 {
-                    target = new PlayerInfo(user.ID, new ChatData(prefix: prefix), new PermissionCollection());
+                    target = new PlayerMetadata(user.ID, new ChatInformation(prefix), new PermissionCollection());
                     _database.Add(target);
                 }
                 else
@@ -360,8 +392,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count != 2)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}us read <player name>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us read <player name>");
                     return;
                 }
 
@@ -389,12 +420,10 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}us remove <player name> <prefix/suffix/color/all>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us remove <player name> <prefix/suffix/color/all>");
                     return;
                 }
 
-                var inputOption = e.Parameters[2];
                 var username = e.Parameters[1];
                 var user = TShock.UserAccounts.GetUserAccountByName(username);
                 if (user == null)
@@ -415,6 +444,7 @@ namespace UserSpecificFunctions
                     return;
                 }
 
+                var inputOption = e.Parameters[2];
                 switch (inputOption.ToLowerInvariant())
                 {
                     case "all":
@@ -424,7 +454,7 @@ namespace UserSpecificFunctions
                             return;
                         }
 
-                        target.ChatData = new ChatData();
+                        target.ChatData = new ChatInformation();
                         player.SendSuccessMessage("Reset successful.");
                         break;
                     case "color":
@@ -467,8 +497,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}us suffix <player name> <suffix>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us suffix <player name> <suffix>");
                     return;
                 }
 
@@ -489,21 +518,14 @@ namespace UserSpecificFunctions
                 var suffix = string.Join(" ", e.Parameters);
                 if (suffix.Length > _config.MaximumSuffixLength)
                 {
-                    player.SendErrorMessage(
-                        $"The suffix cannot contain more than {_config.MaximumSuffixLength} characters.");
-                    return;
-                }
-                if (_config.ProhibitedWords.Any(suffix.Contains))
-                {
-                    player.SendErrorMessage(
-                        $"The suffix cannot contain the following words: {string.Join(", ", from w in _config.ProhibitedWords where suffix.Contains(w) select w)}");
+                    player.SendErrorMessage($"The suffix cannot contain more than {_config.MaximumSuffixLength} characters.");
                     return;
                 }
 
                 var target = _database.Get(user);
                 if (target == null)
                 {
-                    target = new PlayerInfo(user.ID, new ChatData(suffix: suffix), new PermissionCollection());
+                    target = new PlayerMetadata(user.ID, new ChatInformation(suffix: suffix), new PermissionCollection());
                     _database.Add(target);
                 }
                 else
@@ -516,33 +538,19 @@ namespace UserSpecificFunctions
             }
             else
             {
-                player.SendInfoMessage("Available commands:");
-                player.SendInfoMessage($"{Commands.Specifier}us prefix <player name> <prefix>");
-                player.SendInfoMessage($"{Commands.Specifier}us suffix <player name> <suffix>");
-                player.SendInfoMessage($"{Commands.Specifier}us color <player name> <color>");
-                player.SendInfoMessage($"{Commands.Specifier}us read <player name>");
-                player.SendInfoMessage($"{Commands.Specifier}us remove <player name> <prefix/suffix/color/all>");
+                player.SendErrorMessage($"Invalid sub-command! {Commands.Specifier}us <prefix/suffix/color/read/remove>");
             }
         }
 
-        private void UsPermissionCommandHandler(CommandArgs e)
+        private void PermissionCommand(CommandArgs e)
         {
             var player = e.Player;
-
-            // byDD
-            if (!player.HasPermission("us.permission"))
+            if (e.Parameters.Count == 0)
             {
-                player.SendErrorMessage("You do not have permission to use this command.");
-                return;
-            }
-            // byDD
-
-            if (e.Parameters.Count < 1)
-            {
-                player.SendErrorMessage("Invalid syntax! Proper syntax:");
-                player.SendErrorMessage($"{Commands.Specifier}permission add <player name> <permissions>");
-                player.SendErrorMessage($"{Commands.Specifier}permission delete <player name> <permissions>");
-                player.SendErrorMessage($"{Commands.Specifier}permission list <player name> [page]");
+                player.SendInfoMessage("Available commands:");
+                player.SendInfoMessage($"{Commands.Specifier}permission add <player name> <permissions>");
+                player.SendInfoMessage($"{Commands.Specifier}permission remove <player name> <permissions>");
+                player.SendInfoMessage($"{Commands.Specifier}permission list <player name> [page]");
                 return;
             }
 
@@ -551,8 +559,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count < 3)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}permission add <player name> <permission1 permission2 permissionN>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}permission add <player name> <permission1 permission2 permissionN>");
                     return;
                 }
 
@@ -568,23 +575,22 @@ namespace UserSpecificFunctions
                 var target = _database.Get(user);
                 if (target == null)
                 {
-                    target = new PlayerInfo(user.ID, new ChatData(), new PermissionCollection(e.Parameters));
+                    target = new PlayerMetadata(user.ID, new ChatInformation(), new PermissionCollection(e.Parameters));
                     _database.Add(target);
                 }
                 else
                 {
-                    e.Parameters.ForEach(p => target.Permissions.AddPermission(p));
+                    e.Parameters.ForEach(p => target.Permissions.Add(p));
                     _database.Update(target);
                 }
 
-                player.SendSuccessMessage($"Modified '{user.Name}''s permissions successfully.");
+                player.SendSuccessMessage($"Modified {user.Name}'s permissions successfully.");
             }
             else if (command.Equals("list", StringComparison.CurrentCultureIgnoreCase))
             {
                 if (e.Parameters.Count != 2)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}permission list <player name>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}permission list <player name>");
                     return;
                 }
 
@@ -609,8 +615,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count < 3)
                 {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {Commands.Specifier}permission remove <player name> <permission1 permission2 permissionN>");
+                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}permission remove <player name> <permission1 permission2 permissionN>");
                     return;
                 }
 
@@ -630,13 +635,107 @@ namespace UserSpecificFunctions
                     return;
                 }
 
-                e.Parameters.ForEach(p => target.Permissions.RemovePermission(p));
+                e.Parameters.ForEach(p => target.Permissions.Remove(p));
                 _database.Update(target);
-                player.SendSuccessMessage($"Modified '{user.Name}''s permissions successfully.");
+                player.SendSuccessMessage($"Modified {user.Name}'s permissions successfully.");
             }
             else
             {
-                player.SendErrorMessage("Invalid sub-command.");
+                player.SendErrorMessage($"Invalid sub-command! {Commands.Specifier}permission <add/remove/list>");
+            }
+        }
+
+        private void ThirdPerson(CommandArgs args)
+        {
+            string msg = string.Join(" ", args.Parameters);
+            TSPlayer plr = args.Player;
+            if (string.IsNullOrWhiteSpace(msg))
+            {
+                plr.SendErrorMessage("Invalid syntax! Proper syntax: /me <text>");
+                return;
+            }
+
+            if (plr.mute)
+            {
+                plr.SendErrorMessage("You are muted!");
+            }
+            else
+            {
+                if (!plr.HasPermission("antispam.ignore"))
+                {
+                    msg = RemoveTags(msg);
+                    if ((double)msg.Count(Char.IsUpper) / msg.Length >= _config.CapsRatio)
+                    {
+                        msg = msg.ToLower();
+                    }
+                }
+                TSPlayer.All.SendMessage(string.Format("*{0} {1}", plr.Name, msg), 205, 133, 63);
+            }
+        }
+
+        private void Whisper(CommandArgs args)
+        {
+            if (args.Parameters.Count < 2)
+            {
+                args.Player.SendErrorMessage("Invalid syntax! Proper syntax: /whisper <player> <text>");
+                return;
+            }
+
+            var players = TSPlayer.FindByNameOrID(args.Parameters[0]);
+            if (players.Count == 0)
+            {
+                args.Player.SendErrorMessage("Invalid player!");
+            }
+            else if (players.Count > 1)
+            {
+                args.Player.SendMultipleMatchError(players.Select(p => p.Name));
+            }
+            else if (args.Player.mute)
+            {
+                args.Player.SendErrorMessage("You are muted.");
+            }
+            else
+            {
+                var plr = players[0];
+                var msg = string.Join(" ", args.Parameters.ToArray(), 1, args.Parameters.Count - 1);
+                if (!args.Player.HasPermission("antispam.ignore"))
+                {
+                    msg = RemoveTags(msg);
+                    if ((double)msg.Count(Char.IsUpper) / msg.Length >= _config.CapsRatio)
+                    {
+                        msg = msg.ToLower();
+                    }
+                }
+                plr.SendMessage(String.Format("<From {0}> {1}", args.Player.Name, msg), Color.MediumPurple);
+                args.Player.SendMessage(String.Format("<To {0}> {1}", plr.Name, msg), Color.MediumPurple);
+                plr.LastWhisper = args.Player;
+                args.Player.LastWhisper = plr;
+            }
+        }
+
+        private void Reply(CommandArgs args)
+        {
+            if (args.Player.mute)
+            {
+                args.Player.SendErrorMessage("You are muted.");
+            }
+            else if (args.Player.LastWhisper != null)
+            {
+                var msg = string.Join(" ", args.Parameters);
+                if (!args.Player.HasPermission("antispam.ignore"))
+                {
+                    msg = RemoveTags(msg);
+                    if ((double)msg.Count(Char.IsUpper) / msg.Length >= _config.CapsRatio)
+                    {
+                        msg = msg.ToLower();
+                    }
+                }
+                args.Player.LastWhisper.SendMessage(String.Format("<From {0}> {1}", args.Player.Name, msg), Color.MediumPurple);
+                args.Player.SendMessage(String.Format("<To {0}> {1}", args.Player.LastWhisper.Name, msg), Color.MediumPurple);
+            }
+            else
+            {
+                args.Player.SendErrorMessage("You haven't previously received any whispers. Please use /whisper to whisper to other people.");
             }
         }
     }

@@ -1,30 +1,18 @@
 ﻿using System;
-//using JetBrains.Annotations;
+using JetBrains.Annotations;
 
 namespace UserSpecificFunctions.Permissions
 {
     /// <summary>
-    /// Represents a permission.
+    ///     Represents a permission.
     /// </summary>
     public sealed class Permission : IEquatable<Permission>
     {
         /// <summary>
-        /// Gets the permission's name.
-        /// </summary>
-       // [NotNull]
-        public string Name { get; }
-
-        /// <summary>
-        /// Gets the value indicating whether the permission is negated or not.
-        /// </summary>
-        public bool Negated { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="Permission"/> class with the specified name.
+        ///     Initializes a new instance of the <see cref="Permission" /> class with the specified name.
         /// </summary>
         /// <param name="name">The name.</param>
-        /// <remarks>This constructor will automatically check for negation.</remarks>
-        public Permission(string name)  // byDii [NotNull] string name
+        public Permission([NotNull] string name)
         {
             if (name == null)
             {
@@ -41,37 +29,58 @@ namespace UserSpecificFunctions.Permissions
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Permission"/> class with the specified name and negation status.
+        ///     Initializes a new instance of the <see cref="Permission" /> class with the specified name and negation status.
         /// </summary>
         /// <param name="name">The name.</param>
         /// <param name="negated">The negation status.</param>
-        public Permission(string name, bool negated)  // byDii NotNull] string name
+        public Permission([NotNull] string name, bool negated)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Negated = negated;
         }
 
         /// <summary>
-        /// Compares the permission to the given <see cref="Permission"/> object in order to check if they are equal.
+        ///     Gets the permission's name.
         /// </summary>
-        /// <param name="other">The <see cref="Permission"/> object.</param>
+        [NotNull]
+        public string Name { get; }
+
+        /// <summary>
+        ///     Gets the value indicating whether the permission is negated or not.
+        /// </summary>
+        public bool Negated { get; }
+
+        /// <summary>
+        ///     Compares the permission to the given <see cref="Permission" /> object in order to check if they are equal.
+        /// </summary>
+        /// <param name="other">The <see cref="Permission" /> object.</param>
         /// <returns><c>true</c> if the permissions are equal; otherwise, <c>false</c>.</returns>
         public bool Equals(Permission other)
         {
-            if (ReferenceEquals(null, other)) return false;
-            if (ReferenceEquals(this, other)) return true;
+            if (ReferenceEquals(null, other))
+            {
+                return false;
+            }
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
             return string.Equals(Name, other.Name) && Negated == other.Negated;
         }
 
         /// <summary>
-        /// Compares the permission to the given object in order to check if they are equal.
+        ///     Compares the permission to the given object in order to check if they are equal.
         /// </summary>
         /// <param name="obj">The object.</param>
         /// <returns><c>true</c> if the permission and the object are equal; otherwise, <c>false</c>.</returns>
-        public override bool Equals(object obj) => obj is Permission permission && Equals(permission);
+        public override bool Equals(object obj)
+        {
+            return obj is Permission permission && Equals(permission);
+        }
 
         /// <summary>
-        /// Returns the hash code of the permission.
+        ///     Returns the hash code of the permission.
         /// </summary>
         /// <returns>The hash code.</returns>
         public override int GetHashCode()
@@ -83,25 +92,34 @@ namespace UserSpecificFunctions.Permissions
         }
 
         /// <summary>
-        /// Tests for equality of two permission objects.
+        ///     Returns the string representation of this permission.
+        /// </summary>
+        /// <returns>The string representation of this permission.</returns>
+        public override string ToString()
+        {
+            return Negated ? $"!{Name}" : Name;
+        }
+
+        /// <summary>
+        ///     Tests for equality of two permission objects.
         /// </summary>
         /// <param name="left">The first permission.</param>
         /// <param name="right">The second permission.</param>
         /// <returns><c>true</c> if the permissions are equal; otherwise, <c>false</c>.</returns>
-        public static bool operator ==(Permission left, Permission right) => left.Equals(right);
+        public static bool operator ==(Permission left, Permission right)
+        {
+            return left.Equals(right);
+        }
 
         /// <summary>
-        /// Tests for inequality of two permission objects.
+        ///     Tests for inequality of two permission objects.
         /// </summary>
         /// <param name="left">The first permission.</param>
         /// <param name="right">The second permission.</param>
         /// <returns><c>true</c> if the permissions are not equal; otherwise, <c>false</c>.</returns>
-        public static bool operator !=(Permission left, Permission right) => !left.Equals(right);
-
-        /// <summary>
-        /// Returns the string representation of this permission.
-        /// </summary>
-        /// <returns>The string representation of this permission.</returns>
-        public override string ToString() => Negated ? $"!{Name}" : Name;
+        public static bool operator !=(Permission left, Permission right)
+        {
+            return !left.Equals(right);
+        }
     }
 }
