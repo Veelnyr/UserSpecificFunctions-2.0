@@ -119,8 +119,8 @@ namespace UserSpecificFunctions.Database
                     {
                         while (reader2.Read())
                         {
-                            var permissionName = reader.Get<string>("Permission");
-                            var isNegated = reader.Get<int>("IsNegated") == 1;
+                            var permissionName = reader2.Get<string>("Permission");
+                            var isNegated = reader2.Get<int>("IsNegated") == 1;
                             player.Permissions.Add(new Permission(permissionName, isNegated));
                         }
                     }
