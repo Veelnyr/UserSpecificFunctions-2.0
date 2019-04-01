@@ -180,10 +180,9 @@ namespace UserSpecificFunctions
             }
 
             //tag filter, send message
-            if (player.IsLoggedIn)
+            var playerData = _database.Get(player.Account);
+            if (player.IsLoggedIn && playerData != null)
             {
-                var playerData = _database.Get(player.Account);
-
                 var prefix = playerData.ChatData.Prefix ?? player.Group.Prefix;
                 var suffix = playerData.ChatData.Suffix ?? player.Group.Suffix;
                 var chatColor = playerData.ChatData.Color?.ParseColor() ?? player.Group.ChatColor.ParseColor();
