@@ -180,8 +180,8 @@ namespace UserSpecificFunctions
             }
 
             //tag filter, send message
-            var playerData = _database.Get(player.Account);
-            if (player.IsLoggedIn && playerData != null)
+            var playerData = player.Account == null ? null : _database.Get(player.Account);
+            if (playerData != null)
             {
                 var prefix = playerData.ChatData.Prefix ?? player.Group.Prefix;
                 var suffix = playerData.ChatData.Suffix ?? player.Group.Suffix;
