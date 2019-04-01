@@ -96,6 +96,7 @@ namespace UserSpecificFunctions.Database
         [CanBeNull]
         public PlayerMetadata Get(UserAccount user)
         {
+            if (user == null) return null;
             return _cache.SingleOrDefault(p => p.UserId == user.ID);
         }
 
