@@ -20,7 +20,7 @@ namespace UserSpecificFunctions
     {
         private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "UserSpecificFunctions.json");
         private UserSpecificFunctionsConfig _config;
-        public DatabaseManager _database;
+        private DatabaseManager _database;
         private static Regex tagPattern = new Regex("(?<!\\\\)\\[(?<tag>[ac]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
 
         private DateTime[] Times = new DateTime[256];
