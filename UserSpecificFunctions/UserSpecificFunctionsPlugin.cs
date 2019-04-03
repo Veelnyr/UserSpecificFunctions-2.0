@@ -16,11 +16,11 @@ using UserSpecificFunctions.Permissions;
 namespace UserSpecificFunctions
 {
     [ApiVersion(2, 1)]
-    public sealed class UserSpecificFunctionsPlugin : TerrariaPlugin
+    public class UserSpecificFunctionsPlugin : TerrariaPlugin
     {
         private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "UserSpecificFunctions.json");
         private UserSpecificFunctionsConfig _config;
-        private DatabaseManager _database;
+        public static DatabaseManager _database;
         private static Regex tagPattern = new Regex("(?<!\\\\)\\[(?<tag>[ac]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
 
         private DateTime[] Times = new DateTime[256];
