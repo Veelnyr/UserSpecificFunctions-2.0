@@ -19,7 +19,7 @@ namespace UserSpecificFunctions
     public class UserSpecificFunctionsPlugin : TerrariaPlugin
     {
         private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "UserSpecificFunctions.json");
-        private UserSpecificFunctionsConfig _config;
+        public static UserSpecificFunctionsConfig _config;
         public static DatabaseManager _database;
         private static Regex tagPattern = new Regex("(?<!\\\\)\\[(?<tag>[ac]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
 
