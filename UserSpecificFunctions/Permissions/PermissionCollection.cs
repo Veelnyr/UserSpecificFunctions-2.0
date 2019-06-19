@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 
 namespace UserSpecificFunctions.Permissions
 {
@@ -43,12 +42,12 @@ namespace UserSpecificFunctions.Permissions
         /// <summary>
         ///     Indicates whether access to the collection is thread safe.
         /// </summary>
-        public bool IsSynchronized => ((ICollection) _permissions).IsSynchronized;
+        public bool IsSynchronized => ((ICollection)_permissions).IsSynchronized;
 
         /// <summary>
         ///     The object that can be used to synchronize access to this collection.
         /// </summary>
-        public object SyncRoot => ((ICollection) _permissions).SyncRoot;
+        public object SyncRoot => ((ICollection)_permissions).SyncRoot;
 
         /// <summary>
         ///     Copies the elements of the collection to an array.
@@ -68,7 +67,7 @@ namespace UserSpecificFunctions.Permissions
                     "The starting index may not be negative or greater than the size of the array.");
             }
 
-            ((ICollection) _permissions).CopyTo(array, index);
+            ((ICollection)_permissions).CopyTo(array, index);
         }
 
         /// <summary>
@@ -77,7 +76,7 @@ namespace UserSpecificFunctions.Permissions
         /// <returns>An <see cref="IEnumerator" />.</returns>
         public IEnumerator GetEnumerator()
         {
-            return ((ICollection) _permissions).GetEnumerator();
+            return ((ICollection)_permissions).GetEnumerator();
         }
 
         /// <summary>
@@ -93,7 +92,7 @@ namespace UserSpecificFunctions.Permissions
         ///     Adds a new permission to the collection.
         /// </summary>
         /// <param name="permission">The permission, which must not be <c>null</c>.</param>
-        public void Add([NotNull] Permission permission)
+        public void Add(Permission permission)
         {
             if (permission == null)
             {
@@ -112,7 +111,7 @@ namespace UserSpecificFunctions.Permissions
         ///     Adds a permission to the collection.
         /// </summary>
         /// <param name="permission">The string representation of the permission, which must not be <c>null</c>.</param>
-        public void Add([NotNull] string permission)
+        public void Add(string permission)
         {
             if (permission == null)
             {
@@ -127,7 +126,7 @@ namespace UserSpecificFunctions.Permissions
         /// </summary>
         /// <param name="permission">The permission, which must not be <c>null</c>.</param>
         /// <returns><c>true</c> if the permission exists within the collection; otherwise, <c>false</c>.</returns>
-        public bool Contains([NotNull] Permission permission)
+        public bool Contains(Permission permission)
         {
             if (permission == null)
             {
@@ -142,7 +141,7 @@ namespace UserSpecificFunctions.Permissions
         /// </summary>
         /// <param name="permission">The permission, which must not be <c>null</c>.</param>
         /// <returns><c>true</c> if the permission exists within the collection; otherwise, <c>false</c>.</returns>
-        public bool Contains([NotNull] string permission)
+        public bool Contains(string permission)
         {
             if (permission == null)
             {
@@ -174,7 +173,7 @@ namespace UserSpecificFunctions.Permissions
         /// </summary>
         /// <param name="permission">The permission, which must not be <c>null</c>.</param>
         /// <returns><c>true</c> if the specified permission is negated; otherwise, <c>false</c>.</returns>
-        public bool Negated([NotNull] Permission permission)
+        public bool Negated(Permission permission)
         {
             return _permissions.Any(p => p.Name.Equals(permission.Name) && p.Negated);
         }
@@ -184,7 +183,7 @@ namespace UserSpecificFunctions.Permissions
         /// </summary>
         /// <param name="permission">The permission, which must not be <c>null</c>.</param>
         /// <returns><c>true</c> if the specified permission is negated; otherwise, <c>false</c>.</returns>
-        public bool Negated([NotNull] string permission)
+        public bool Negated(string permission)
         {
             if (permission == null)
             {
@@ -198,7 +197,7 @@ namespace UserSpecificFunctions.Permissions
         ///     Removes a permission from the collection.
         /// </summary>
         /// <param name="permission">The permission, which must not be <c>null</c>.</param>
-        public void Remove([NotNull] Permission permission)
+        public void Remove(Permission permission)
         {
             if (permission == null)
             {
@@ -212,7 +211,7 @@ namespace UserSpecificFunctions.Permissions
         ///     Removes a permission from the collection.
         /// </summary>
         /// <param name="permission">The string representation of the permission, which must not be <c>null</c>.</param>
-        public void Remove([NotNull] string permission)
+        public void Remove(string permission)
         {
             if (permission == null)
             {

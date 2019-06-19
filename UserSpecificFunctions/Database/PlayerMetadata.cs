@@ -1,5 +1,4 @@
 ﻿using System;
-using JetBrains.Annotations;
 using UserSpecificFunctions.Permissions;
 
 namespace UserSpecificFunctions.Database
@@ -16,7 +15,7 @@ namespace UserSpecificFunctions.Database
         /// </summary>
         /// <param name="userId">The user ID.</param>
         /// <param name="chatData">The user's chat information, which may not be null.</param>
-        public PlayerMetadata(int userId, [NotNull] ChatInformation chatData)
+        public PlayerMetadata(int userId, ChatInformation chatData)
         {
             UserId = userId;
             ChatData = chatData ?? throw new ArgumentNullException(nameof(chatData));
@@ -29,7 +28,7 @@ namespace UserSpecificFunctions.Database
         /// <param name="userId">The user ID.</param>
         /// <param name="chatData">The user's chat information, which may not be null.</param>
         /// <param name="permissions">A collection of the user's permissions, which may not be null.</param>
-        public PlayerMetadata(int userId, [NotNull] ChatInformation chatData, [NotNull] PermissionCollection permissions) : this(
+        public PlayerMetadata(int userId, ChatInformation chatData, PermissionCollection permissions) : this(
             userId, chatData)
         {
             Permissions = permissions ?? throw new ArgumentNullException(nameof(permissions));
@@ -38,13 +37,11 @@ namespace UserSpecificFunctions.Database
         /// <summary>
         ///     Gets or sets the <see cref="ChatData" /> instance associated with this <see cref="PlayerMetadata" /> instance.
         /// </summary>
-        [NotNull]
         public ChatInformation ChatData { get; set; }
 
         /// <summary>
         ///     Gets or sets the list of custom permissions the user has.
         /// </summary>
-        [NotNull]
         public PermissionCollection Permissions { get; } = new PermissionCollection();
 
         /// <summary>

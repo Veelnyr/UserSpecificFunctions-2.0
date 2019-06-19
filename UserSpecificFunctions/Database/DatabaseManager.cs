@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using JetBrains.Annotations;
 using Mono.Data.Sqlite;
 using MySql.Data.MySqlClient;
 using TShockAPI;
@@ -71,7 +70,7 @@ namespace UserSpecificFunctions.Database
         ///     Inserts a new object into the database.
         /// </summary>
         /// <param name="playerInfo">The object, which must not be <c>null</c>.</param>
-        public void Add([NotNull] PlayerMetadata playerInfo)
+        public void Add(PlayerMetadata playerInfo)
         {
             if (playerInfo == null)
             {
@@ -94,7 +93,6 @@ namespace UserSpecificFunctions.Database
         /// </summary>
         /// <param name="user">The <see cref="User" /> object.</param>
         /// <returns>The <see cref="PlayerMetadata" /> object associated with the user.</returns>
-        [CanBeNull]
         public PlayerMetadata Get(UserAccount user)
         {
             return _cache.SingleOrDefault(p => p.UserId == user.ID);
@@ -135,7 +133,7 @@ namespace UserSpecificFunctions.Database
         ///     Removes the specified user from the database.
         /// </summary>
         /// <param name="user">The user, which must not be <c>null</c>.</param>
-        public void Remove([NotNull] UserAccount user)
+        public void Remove(UserAccount user)
         {
             if (user == null)
             {
@@ -150,7 +148,7 @@ namespace UserSpecificFunctions.Database
         ///     Updates the specified player's database information.
         /// </summary>
         /// <param name="playerInfo">The player, which must not be <c>null</c>.</param>
-        public void Update([NotNull] PlayerMetadata playerInfo)
+        public void Update(PlayerMetadata playerInfo)
         {
             if (playerInfo == null)
             {

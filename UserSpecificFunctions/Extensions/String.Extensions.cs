@@ -1,5 +1,4 @@
 ﻿using System;
-using JetBrains.Annotations;
 using Microsoft.Xna.Framework;
 
 namespace UserSpecificFunctions.Extensions
@@ -14,7 +13,7 @@ namespace UserSpecificFunctions.Extensions
         /// </summary>
         /// <param name="color">The color.</param>
         /// <returns>A <see cref="Color" /> object.</returns>
-        public static Color ParseColor([NotNull] this string color)
+        public static Color ParseColor(this string color)
         {
             if (color == null)
             {

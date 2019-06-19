@@ -1,6 +1,4 @@
-﻿using JetBrains.Annotations;
-
-namespace UserSpecificFunctions.Database
+﻿namespace UserSpecificFunctions.Database
 {
     /// <summary>
     ///     Holds information on a user's chat data.
@@ -24,19 +22,16 @@ namespace UserSpecificFunctions.Database
         /// <summary>
         ///     Gets or sets the user's chat color.
         /// </summary>
-        [CanBeNull]
         public string Color { get; set; }
 
         /// <summary>
         ///     Gets or sets the user's chat prefix.
         /// </summary>
-        [CanBeNull]
         public string Prefix { get; set; }
 
         /// <summary>
         ///     Gets or sets the user's chat suffix.
         /// </summary>
-        [CanBeNull]
         public string Suffix { get; set; }
     }
 }

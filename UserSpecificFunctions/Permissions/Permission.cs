@@ -1,5 +1,4 @@
 ﻿using System;
-using JetBrains.Annotations;
 
 namespace UserSpecificFunctions.Permissions
 {
@@ -12,7 +11,7 @@ namespace UserSpecificFunctions.Permissions
         ///     Initializes a new instance of the <see cref="Permission" /> class with the specified name.
         /// </summary>
         /// <param name="name">The name.</param>
-        public Permission([NotNull] string name)
+        public Permission(string name)
         {
             if (name == null)
             {
@@ -33,7 +32,7 @@ namespace UserSpecificFunctions.Permissions
         /// </summary>
         /// <param name="name">The name.</param>
         /// <param name="negated">The negation status.</param>
-        public Permission([NotNull] string name, bool negated)
+        public Permission(string name, bool negated)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Negated = negated;
@@ -42,7 +41,6 @@ namespace UserSpecificFunctions.Permissions
         /// <summary>
         ///     Gets the permission's name.
         /// </summary>
-        [NotNull]
         public string Name { get; }
 
         /// <summary>
