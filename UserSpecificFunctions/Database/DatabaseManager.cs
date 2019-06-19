@@ -78,6 +78,7 @@ namespace UserSpecificFunctions.Database
                 throw new ArgumentNullException(nameof(playerInfo));
             }
 
+            _cache.Add(playerInfo);
             _connection.Query(
                 "INSERT INTO UserSpecificFunctions (UserId, Prefix, Suffix, Color) VALUES (@0, @1, @2, @3)",
                 playerInfo.UserId, playerInfo.ChatData.Prefix, playerInfo.ChatData.Suffix, playerInfo.ChatData.Color);
