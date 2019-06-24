@@ -300,12 +300,18 @@ namespace UserSpecificFunctions
                 return;
             }
 
-            var command = e.Parameters[0];
-            if (command.Equals("color", StringComparison.CurrentCultureIgnoreCase))
+            var subCommand = e.Parameters[0];
+            if (subCommand == "color")
             {
+                if (!e.Player.HasPermission("us.color"))
+                {
+                    e.Player.SendErrorMessage("You do not have permission to modify color.");
+                    return;
+                }
+
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us color <player name> <rrr,ggg,bbb>");
+                    player.SendErrorMessage($"Invalid syntax! {Commands.Specifier}us color <player name> <rrr,ggg,bbb>");
                     return;
                 }
 
@@ -344,11 +350,17 @@ namespace UserSpecificFunctions
 
                 player.SendSuccessMessage($"Successfully set {user.Name}'s color.");
             }
-            else if (command.Equals("prefix", StringComparison.CurrentCultureIgnoreCase))
+            else if (subCommand == "prefix")
             {
+                if (!e.Player.HasPermission("us.prefix"))
+                {
+                    e.Player.SendErrorMessage("You do not have permission to modify prefix.");
+                    return;
+                }
+
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us prefix <player name> <prefix>");
+                    player.SendErrorMessage($"Invalid syntax! {Commands.Specifier}us prefix <player name> <prefix>");
                     return;
                 }
 
@@ -387,7 +399,7 @@ namespace UserSpecificFunctions
 
                 player.SendSuccessMessage($"Successfully set {user.Name}'s prefix.");
             }
-            else if (command.Equals("read", StringComparison.CurrentCultureIgnoreCase))
+            else if (subCommand == "read")
             {
                 if (e.Parameters.Count != 2)
                 {
@@ -415,11 +427,11 @@ namespace UserSpecificFunctions
                 player.SendMessage($"  * Suffix: {target.ChatData.Suffix ?? "None"}", Color.LawnGreen);
                 player.SendMessage($"  * Chat color: {target.ChatData.Color ?? "None"}", Color.LawnGreen);
             }
-            else if (command.Equals("remove", StringComparison.CurrentCultureIgnoreCase))
+            else if (subCommand == "remove")
             {
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us remove <player name> <prefix/suffix/color/all>");
+                    player.SendErrorMessage($"Invalid syntax! {Commands.Specifier}us remove <player name> <prefix/suffix/color/all>");
                     return;
                 }
 
@@ -447,56 +459,62 @@ namespace UserSpecificFunctions
                 switch (inputOption.ToLowerInvariant())
                 {
                     case "all":
-                        if (!player.HasPermission("us.resetall"))
+                        if (!player.HasPermission("us.remove.all"))
                         {
                             player.SendErrorMessage("You do not have access to this command.");
                             return;
                         }
-
                         target.ChatData = new ChatInformation();
                         player.SendSuccessMessage("Reset successful.");
                         break;
+
                     case "color":
                         if (!player.HasPermission("us.remove.color"))
                         {
                             player.SendErrorMessage("You do not have access to this command.");
                             return;
                         }
-
                         target.ChatData.Color = null;
                         player.SendSuccessMessage($"Modified {user.Name}'s chat color successfully.");
                         break;
+
                     case "prefix":
                         if (!player.HasPermission("us.remove.prefix"))
                         {
                             player.SendErrorMessage("You do not have access to this command.");
                             return;
                         }
-
                         target.ChatData.Prefix = null;
                         player.SendSuccessMessage($"Modified {user.Name}'s chat prefix successfully.");
                         break;
+
                     case "suffix":
                         if (!player.HasPermission("us.remove.suffix"))
                         {
                             player.SendErrorMessage("You do not have access to this command.");
                             return;
                         }
-
                         target.ChatData.Suffix = null;
                         player.SendSuccessMessage($"Modified {user.Name}'s chat suffix successfully.");
                         break;
+
                     default:
-                        player.SendErrorMessage("Invalid option!");
+                        player.SendErrorMessage($"Invalid option! {Commands.Specifier}us remove <player name> <prefix/suffix/color/all>");
                         break;
                 }
                 _database.Update(target);
             }
-            else if (command.Equals("suffix", StringComparison.CurrentCultureIgnoreCase))
+            else if (subCommand == "suffix")
             {
+                if (!e.Player.HasPermission("us.suffix"))
+                {
+                    e.Player.SendErrorMessage("You do not have permission to modify suffix.");
+                    return;
+                }
+
                 if (e.Parameters.Count != 3)
                 {
-                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}us suffix <player name> <suffix>");
+                    player.SendErrorMessage($"Invalid syntax! {Commands.Specifier}us suffix <player name> <suffix>");
                     return;
                 }
 
@@ -558,7 +576,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count < 3)
                 {
-                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}permission add <player name> <permission1 permission2 permissionN>");
+                    player.SendErrorMessage($"Invalid syntax! {Commands.Specifier}permission add <player name> <permission1 permission2 permissionN>");
                     return;
                 }
 
@@ -589,7 +607,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count != 2)
                 {
-                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}permission list <player name>");
+                    player.SendErrorMessage($"Invalid syntax! {Commands.Specifier}permission list <player name>");
                     return;
                 }
 
@@ -614,7 +632,7 @@ namespace UserSpecificFunctions
             {
                 if (e.Parameters.Count < 3)
                 {
-                    player.SendErrorMessage($"Invalid syntax! Proper syntax: {Commands.Specifier}permission remove <player name> <permission1 permission2 permissionN>");
+                    player.SendErrorMessage($"Invalid syntax! {Commands.Specifier}permission remove <player name> <permission1 permission2 permissionN>");
                     return;
                 }
 
